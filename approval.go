@@ -22,9 +22,10 @@ type approvalEnvironment struct {
 	issueApprovers      []string
 	disallowedUsers     []string
 	minimumApprovals    int
+	workflowInitiator   string
 }
 
-func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int, issueTitle, issueBody string, disallowedUsers []string) (*approvalEnvironment, error) {
+func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int, issueTitle, issueBody string, disallowedUsers []string, workflowInitiator string) (*approvalEnvironment, error) {
 	repoOwnerAndName := strings.Split(repoFullName, "/")
 	if len(repoOwnerAndName) != 2 {
 		return nil, fmt.Errorf("repo owner and name in unexpected format: %s", repoFullName)
@@ -32,16 +33,17 @@ func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner strin
 	repo := repoOwnerAndName[1]
 
 	return &approvalEnvironment{
-		client:           client,
-		repoFullName:     repoFullName,
-		repo:             repo,
-		repoOwner:        repoOwner,
-		runID:            runID,
-		issueApprovers:   approvers,
-		disallowedUsers:  disallowedUsers,
-		minimumApprovals: minimumApprovals,
-		issueTitle:       issueTitle,
-		issueBody:        issueBody,
+		client:            client,
+		repoFullName:      repoFullName,
+		repo:              repo,
+		repoOwner:         repoOwner,
+		runID:             runID,
+		issueApprovers:    approvers,
+		disallowedUsers:   disallowedUsers,
+		minimumApprovals:  minimumApprovals,
+		issueTitle:        fmt.Sprintf("Manual approval required for: %s (run %d)", issueTitle, runID),
+		issueBody:         issueBody,
+		workflowInitiator: workflowInitiator,
 	}, nil
 }
 
@@ -50,15 +52,11 @@ func (a approvalEnvironment) runURL() string {
 }
 
 func (a *approvalEnvironment) createApprovalIssue(ctx context.Context) error {
-	issueTitle := fmt.Sprintf("Manual approval required for workflow run %d", a.runID)
-
-	if a.issueTitle != "" {
-		issueTitle = fmt.Sprintf("%s: %s", issueTitle, a.issueTitle)
-	}
-
 	issueApproversText := "Anyone can approve."
+	assignees := []string{a.workflowInitiator}
 	if len(a.issueApprovers) > 0 {
 		issueApproversText = fmt.Sprintf("%s", a.issueApprovers)
+		assignees = a.issueApprovers
 	}
 
 	issueBody := fmt.Sprintf(`Workflow is pending manual review.
@@ -82,14 +80,14 @@ Respond %s to continue workflow or %s to cancel.`,
 		"Creating issue in repo %s/%s with the following content:\nTitle: %s\nApprovers: %s\nBody:\n%s\n",
 		a.repoOwner,
 		a.repo,
-		issueTitle,
-		a.issueApprovers,
+		a.issueTitle,
+		assignees,
 		issueBody,
 	)
 	a.approvalIssue, _, err = a.client.Issues.Create(ctx, a.repoOwner, a.repo, &github.IssueRequest{
-		Title:     &issueTitle,
+		Title:     &a.issueTitle,
 		Body:      &issueBody,
-		Assignees: &a.issueApprovers,
+		Assignees: &assignees,
 	})
 	if err != nil {
 		return err
