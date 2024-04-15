@@ -30,4 +30,4 @@ inputs:
     default: ''
 runs:
   using: docker
-  image: docker://ghcr.io/trstringer/manual-approval:1.9.0
+  image: docker://northamerica-northeast1-docker.pkg.dev/delphia-software/docker-images/manual-approval:main
