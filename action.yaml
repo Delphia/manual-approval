@@ -30,4 +30,4 @@ inputs:
     default: ''
 runs:
   using: docker
-  image: docker://northamerica-northeast1-docker.pkg.dev/delphia-software/docker-images/manual-approval:main
+  image: docker://ghcr.io/delphia/manual-approval:main
