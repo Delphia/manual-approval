@@ -30,4 +30,4 @@ inputs:
     default: ''
 runs:
   using: docker
-  image: docker://ghcr.io/delphia/manual-approval:main
+  image: docker://ghcr.io/delphia/manual-approval:v2
