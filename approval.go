@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/google/go-github/v43/github"
+	"github.com/google/go-github/v61/github"
 )
 
 type approvalEnvironment struct {
@@ -20,10 +20,12 @@ type approvalEnvironment struct {
 	issueTitle          string
 	issueBody           string
 	issueApprovers      []string
+	disallowedUsers     []string
 	minimumApprovals    int
+	workflowInitiator   string
 }
 
-func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int, issueTitle, issueBody string) (*approvalEnvironment, error) {
+func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int, issueTitle, issueBody string, disallowedUsers []string, workflowInitiator string) (*approvalEnvironment, error) {
 	repoOwnerAndName := strings.Split(repoFullName, "/")
 	if len(repoOwnerAndName) != 2 {
 		return nil, fmt.Errorf("repo owner and name in unexpected format: %s", repoFullName)
@@ -31,15 +33,17 @@ func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner strin
 	repo := repoOwnerAndName[1]
 
 	return &approvalEnvironment{
-		client:           client,
-		repoFullName:     repoFullName,
-		repo:             repo,
-		repoOwner:        repoOwner,
-		runID:            runID,
-		issueApprovers:   approvers,
-		minimumApprovals: minimumApprovals,
-		issueTitle:       issueTitle,
-		issueBody:        issueBody,
+		client:            client,
+		repoFullName:      repoFullName,
+		repo:              repo,
+		repoOwner:         repoOwner,
+		runID:             runID,
+		issueApprovers:    approvers,
+		disallowedUsers:   disallowedUsers,
+		minimumApprovals:  minimumApprovals,
+		issueTitle:        fmt.Sprintf("Manual approval required for: %s (run %d)", issueTitle, runID),
+		issueBody:         issueBody,
+		workflowInitiator: workflowInitiator,
 	}, nil
 }
 
@@ -48,10 +52,11 @@ func (a approvalEnvironment) runURL() string {
 }
 
 func (a *approvalEnvironment) createApprovalIssue(ctx context.Context) error {
-	issueTitle := fmt.Sprintf("Manual approval required for workflow run %d", a.runID)
-
-	if a.issueTitle != "" {
-		issueTitle = fmt.Sprintf("%s: %s", issueTitle, a.issueTitle)
+	issueApproversText := "Anyone can approve."
+	assignees := []string{a.workflowInitiator}
+	if len(a.issueApprovers) > 0 {
+		issueApproversText = fmt.Sprintf("%s", a.issueApprovers)
+		assignees = a.issueApprovers
 	}
 
 	issueBody := fmt.Sprintf(`Workflow is pending manual review.
@@ -61,7 +66,7 @@ Required approvers: %s
 
 Respond %s to continue workflow or %s to cancel.`,
 		a.runURL(),
-		a.issueApprovers,
+		issueApproversText,
 		formatAcceptedWords(approvedWords),
 		formatAcceptedWords(deniedWords),
 	)
@@ -75,14 +80,14 @@ Respond %s to continue workflow or %s to cancel.`,
 		"Creating issue in repo %s/%s with the following content:\nTitle: %s\nApprovers: %s\nBody:\n%s\n",
 		a.repoOwner,
 		a.repo,
-		issueTitle,
-		a.issueApprovers,
+		a.issueTitle,
+		assignees,
 		issueBody,
 	)
 	a.approvalIssue, _, err = a.client.Issues.Create(ctx, a.repoOwner, a.repo, &github.IssueRequest{
-		Title:     &issueTitle,
+		Title:     &a.issueTitle,
 		Body:      &issueBody,
-		Assignees: &a.issueApprovers,
+		Assignees: &assignees,
 	})
 	if err != nil {
 		return err
@@ -93,18 +98,27 @@ Respond %s to continue workflow or %s to cancel.`,
 	return nil
 }
 
-func approvalFromComments(comments []*github.IssueComment, approvers []string, minimumApprovals int) (approvalStatus, error) {
-	remainingApprovers := make([]string, len(approvers))
-	copy(remainingApprovers, approvers)
+func approvalFromComments(comments []*github.IssueComment, approvers []string, minimumApprovals int, disallowedUsers []string) (approvalStatus, error) {
+
+	approvals := []string{}
 
 	if minimumApprovals == 0 {
+		if len(approvers) == 0 {
+			return "", fmt.Errorf("error: no required approvers or minimum approvals set")
+		}
 		minimumApprovals = len(approvers)
 	}
 
 	for _, comment := range comments {
 		commentUser := comment.User.GetLogin()
-		approverIdx := approversIndex(remainingApprovers, commentUser)
-		if approverIdx < 0 {
+
+		if approversIndex(disallowedUsers, commentUser) >= 0 {
+			continue
+		}
+		if approversIndex(approvals, commentUser) >= 0 {
+			continue
+		}
+		if len(approvers) > 0 && approversIndex(approvers, commentUser) < 0 {
 			continue
 		}
 
@@ -114,11 +128,10 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 			return approvalStatusPending, err
 		}
 		if isApprovalComment {
-			if len(remainingApprovers) == len(approvers)-minimumApprovals+1 {
+			approvals = append(approvals, commentUser)
+			if len(approvals) >= minimumApprovals {
 				return approvalStatusApproved, nil
 			}
-			remainingApprovers[approverIdx] = remainingApprovers[len(remainingApprovers)-1]
-			remainingApprovers = remainingApprovers[:len(remainingApprovers)-1]
 			continue
 		}
 

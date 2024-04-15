@@ -6,7 +6,7 @@ branding:
 inputs:
   approvers:
     description: Required approvers
-    required: true
+    required: false
   secret:
     description: Secret
     required: true
@@ -21,7 +21,7 @@ inputs:
     required: false
   exclude-workflow-initiator-as-approver:
     description: Whether or not to filter out the user who initiated the workflow as an approver if they are in the approvers list
-    default: false
+    default: 'false'
   additional-approved-words:
     description: Comma separated list of words that can be used to approve beyond the defaults.
     default: ''
@@ -30,4 +30,4 @@ inputs:
     default: ''
 runs:
   using: docker
-  image: docker://ghcr.io/trstringer/manual-approval:1.9.0
+  image: docker://ghcr.io/delphia/manual-approval:main
