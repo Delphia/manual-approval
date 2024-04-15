@@ -110,7 +110,7 @@ func newGithubClient(ctx context.Context) (*github.Client, error) {
 		if !apiUrlPresent {
 			apiUrl = serverUrl
 		}
-		return github.NewEnterpriseClient(apiUrl, serverUrl, tc)
+		return github.NewClient(tc).WithEnterpriseURLs(apiUrl, serverUrl)
 	}
 	return github.NewClient(tc), nil
 }
