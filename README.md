@@ -31,7 +31,7 @@ In all cases, `manual-approval` will close the initial GitHub issue.
 
 ```yaml
 steps:
-  - uses: Delphia/manual-approval@v1
+  - uses: Delphia/manual-approval@v2
     with:
       secret: ${{ github.TOKEN }}
       approvers: user1,user2,org-team1
@@ -76,7 +76,7 @@ jobs:
           app_id: ${{ secrets.APP_ID }}
           private_key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: Wait for approval
-        uses: Delphia/manual-approval@v1
+        uses: Delphia/manual-approval@v2
         with:
           secret: ${{ steps.generate_token.outputs.token }}
           approvers: myteam
@@ -95,7 +95,7 @@ For instance, if you want your manual approval step to timeout after an hour you
 
 ```yaml
 steps:
-  - uses: Delphia/manual-approval@v1
+  - uses: Delphia/manual-approval@v2
     timeout-minutes: 60
     ...
 ```
@@ -164,6 +164,6 @@ For `uses`, this should point to your repo and dev branch.
 1. Create a release branch and modify `action.yaml` to point to the new image
 1. Open and merge a PR to add these changes to the default branch
 1. Make sure to fetch the new changes into your local repo: `$ git checkout main && git fetch origin && git merge origin main`
-1. Delete the `v1` tag locally and remotely: `$ git tag -d v1 && git push --delete origin v1`
-1. Create and push new tags: `$ git tag v1.7.0 && git tag v1 && git push origin --tags`
+1. Delete the `v2` tag locally and remotely: `$ git tag -d v2 && git push --delete origin v2`
+1. Create and push new tags: `$ git tag v1.7.0 && git tag v2 && git push origin --tags`
 1. Create the GitHub project release
