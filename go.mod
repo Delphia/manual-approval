@@ -1,4 +1,4 @@
-module github.com/Delphia/manual-approval
+module github.com/Delphia/manual-approval/v2
 
 go 1.22
 
