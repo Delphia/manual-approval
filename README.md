@@ -4,6 +4,7 @@ This is a fork of [trstringer/manual-approval](https://github.com/trstringer/man
 
 - Leaving the approvers field blank allows anyone with access to the repo to approve.
 - Golang version and library updates.
+- Links to runs in issue bodies are fixed.
 
 [![ci](https://github.com/Delphia/manual-approval/actions/workflows/ci.yaml/badge.svg)](https://github.com/Delphia/manual-approval/actions/workflows/ci.yaml)
 
