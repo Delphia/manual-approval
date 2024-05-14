@@ -48,7 +48,7 @@ func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner strin
 }
 
 func (a approvalEnvironment) runURL() string {
-	return fmt.Sprintf("%s%s/actions/runs/%d", a.client.BaseURL.String(), a.repoFullName, a.runID)
+	return fmt.Sprintf("%s%s/actions/runs/%d", githubBaseURL, a.repoFullName, a.runID)
 }
 
 func (a *approvalEnvironment) createApprovalIssue(ctx context.Context) error {
