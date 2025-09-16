@@ -30,7 +30,7 @@ var (
 	additionalDeniedWords   = readAdditionalWords(envVarAdditionalDeniedWords)
 
 	approvedWords = append([]string{"approved", "approve", "lgtm", "yes", ":)", "yaaaas", "If Andrew wills it, it shall be done", "By Phil's mustache, do it!", "Send it", "Ship it", "Reverse-oracle it", "1", "True==True"}, additionalApprovedWords...)
-	deniedWords   = append([]string{"denied", "deny", "no", "nuhu", "not a chance", "talk to the hand", "In the name of Phil's mustache, stop", "0", "~(True == True)"}, additionalDeniedWords...)
+	deniedWords   = append([]string{"denied", "deny", "no", "nuhu", "not a chance", "talk to the hand", "In the name of Phil's mustache, stop!", "0", "~(True == True)"}, additionalDeniedWords...)
 )
 
 func readAdditionalWords(envVar string) []string {

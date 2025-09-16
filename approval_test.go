@@ -290,6 +290,42 @@ func TestApprovedCommentBody(t *testing.T) {
 			isSuccess:          true,
 			customApprovalWord: "✅",
 		},
+		{
+			name:               "approved_with_smile_emoji",
+			commentBody:        ":)",
+			isSuccess:          true,
+			customApprovalWord: "",
+		},
+		{
+			name:               "approved_with_smile_emoji_and_punctuation",
+			commentBody:        ":)!",
+			isSuccess:          true,
+			customApprovalWord: "",
+		},
+		{
+			name:               "approved_with_smile_emoji_and_period",
+			commentBody:        ":).",
+			isSuccess:          true,
+			customApprovalWord: "",
+		},
+		{
+			name:               "approved_with_custom_word_with_parentheses",
+			commentBody:        "(approved)",
+			isSuccess:          true,
+			customApprovalWord: "(approved)",
+		},
+		{
+			name:               "approved_with_custom_word_with_brackets",
+			commentBody:        "[approved]",
+			isSuccess:          true,
+			customApprovalWord: "[approved]",
+		},
+		{
+			name:               "approved_with_custom_word_with_regex_chars",
+			commentBody:        "a.b+c*d?e^f$g|h",
+			isSuccess:          true,
+			customApprovalWord: "a.b+c*d?e^f$g|h",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -401,6 +437,30 @@ func TestDeniedCommentBody(t *testing.T) {
 			commentBody:      "#noway",
 			isSuccess:        true,
 			customDenialWord: "#noway",
+		},
+		{
+			name:             "denied_with_custom_word_with_parentheses",
+			commentBody:      "(denied)",
+			isSuccess:        true,
+			customDenialWord: "(denied)",
+		},
+		{
+			name:             "denied_with_custom_word_with_brackets",
+			commentBody:      "[denied]",
+			isSuccess:        true,
+			customDenialWord: "[denied]",
+		},
+		{
+			name:             "denied_with_custom_word_with_regex_chars",
+			commentBody:      "a.b+c*d?e^f$g|h",
+			isSuccess:        true,
+			customDenialWord: "a.b+c*d?e^f$g|h",
+		},
+		{
+			name:             "denied_with_custom_word_with_tilde",
+			commentBody:      "~denied",
+			isSuccess:        true,
+			customDenialWord: "~denied",
 		},
 	}
 
