@@ -7,36 +7,31 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v74/github"
 )
 
-func retrieveApprovers(client *github.Client, repoOwner string) ([]string, []string, error) {
+func retrieveApprovers(client *github.Client, repoOwner string) ([]string, []string, int, error) {
 	workflowInitiator := os.Getenv(envVarWorkflowInitiator)
 	shouldExcludeWorkflowInitiatorRaw := os.Getenv(envVarExcludeWorkflowInitiatorAsApprover)
 	shouldExcludeWorkflowInitiator, parseBoolErr := strconv.ParseBool(shouldExcludeWorkflowInitiatorRaw)
 	if parseBoolErr != nil {
-		return nil, nil, fmt.Errorf("error parsing exclude-workflow-initiator-as-approver flag: %w", parseBoolErr)
+		return nil, nil, 0, fmt.Errorf("error parsing exclude-workflow-initiator-as-approver flag: %w", parseBoolErr)
 	}
 
-	approvers := []string{}
+	var approvers []string
 	requiredApproversRaw := os.Getenv(envVarApprovers)
-	requiredApprovers := []string{}
+	var requiredApprovers []string
 	if requiredApproversRaw != "" {
 		requiredApprovers = strings.Split(requiredApproversRaw, ",")
 	}
 
-	minimumApprovalsRaw := os.Getenv(envVarMinimumApprovals)
-	minimumApprovals := len(approvers)
-
 	var disallowedUsers []string
 	if shouldExcludeWorkflowInitiator {
 		disallowedUsers = []string{workflowInitiator}
-	} else {
-		disallowedUsers = []string{}
 	}
 
 	if len(requiredApprovers) == 0 {
-		return []string{}, disallowedUsers, nil
+		return nil, disallowedUsers, 0, nil
 	}
 
 	for i := range requiredApprovers {
@@ -44,7 +39,10 @@ func retrieveApprovers(client *github.Client, repoOwner string) ([]string, []str
 	}
 
 	for _, approverUser := range requiredApprovers {
-		expandedUsers := expandGroupFromUser(client, repoOwner, approverUser, workflowInitiator, shouldExcludeWorkflowInitiator)
+		expandedUsers, err := expandGroupFromUser(client, repoOwner, approverUser, workflowInitiator, shouldExcludeWorkflowInitiator)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("error resolving approver %q: %w", approverUser, err)
+		}
 		if expandedUsers != nil {
 			approvers = append(approvers, expandedUsers...)
 		} else if strings.EqualFold(workflowInitiator, approverUser) && shouldExcludeWorkflowInitiator {
@@ -56,33 +54,36 @@ func retrieveApprovers(client *github.Client, repoOwner string) ([]string, []str
 
 	approvers = deduplicateUsers(approvers)
 
-	var err error
-	if minimumApprovalsRaw != "" {
-		minimumApprovals, err = strconv.Atoi(minimumApprovalsRaw)
+	minimumApprovals := len(approvers)
+	if raw := os.Getenv(envVarMinimumApprovals); raw != "" {
+		var err error
+		minimumApprovals, err = strconv.Atoi(raw)
 		if err != nil {
-			return nil, nil, fmt.Errorf("error parsing minimum number of approvals: %w", err)
+			return nil, nil, 0, fmt.Errorf("error parsing minimum number of approvals: %w", err)
 		}
 	}
 
 	if minimumApprovals > len(approvers) {
-		return nil, nil, fmt.Errorf("error: minimum required approvals (%d) is greater than the total number of approvers (%d)", minimumApprovals, len(approvers))
+		return nil, nil, 0, fmt.Errorf("error: minimum required approvals (%d) is greater than the total number of approvers (%d)", minimumApprovals, len(approvers))
 	}
 
-	return approvers, disallowedUsers, nil
+	return approvers, disallowedUsers, minimumApprovals, nil
 }
 
-func expandGroupFromUser(client *github.Client, org, userOrTeam string, workflowInitiator string, shouldExcludeWorkflowInitiator bool) []string {
+func expandGroupFromUser(client *github.Client, org, userOrTeam string, workflowInitiator string, shouldExcludeWorkflowInitiator bool) ([]string, error) {
 	fmt.Printf("Attempting to expand user %s/%s as a group (may not succeed)\n", org, userOrTeam)
 
 	// GitHub replaces periods in the team name with hyphens. If a period is
 	// passed to the request it would result in a 404. So we need to replace
-	// and occurrences with a hyphen.
+	// any occurrences with a hyphen.
 	formattedUserOrTeam := strings.ReplaceAll(userOrTeam, ".", "-")
 
-	users, _, err := client.Teams.ListTeamMembersBySlug(context.Background(), org, formattedUserOrTeam, &github.TeamListTeamMembersOptions{})
+	users, resp, err := client.Teams.ListTeamMembersBySlug(context.Background(), org, formattedUserOrTeam, &github.TeamListTeamMembersOptions{})
 	if err != nil {
-		fmt.Printf("%v\n", err)
-		return nil
+		if resp != nil && resp.StatusCode == 404 {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error expanding team %s/%s: %w", org, userOrTeam, err)
 	}
 
 	userNames := make([]string, 0, len(users))
@@ -95,7 +96,7 @@ func expandGroupFromUser(client *github.Client, org, userOrTeam string, workflow
 		}
 	}
 
-	return userNames
+	return userNames, nil
 }
 
 func deduplicateUsers(users []string) []string {

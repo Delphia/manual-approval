@@ -22,7 +22,7 @@ const (
 	envVarAdditionalApprovedWords            string = "INPUT_ADDITIONAL-APPROVED-WORDS"
 	envVarAdditionalDeniedWords              string = "INPUT_ADDITIONAL-DENIED-WORDS"
 
-	githubBaseURL string = "https://github.com"
+	githubBaseURL string = "https://github.com/"
 )
 
 var (
