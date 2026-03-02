@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v74/github"
 )
 
 type approvalEnvironment struct {
@@ -55,7 +56,7 @@ func (a *approvalEnvironment) createApprovalIssue(ctx context.Context) error {
 	issueApproversText := "Anyone can approve."
 	assignees := []string{a.workflowInitiator}
 	if len(a.issueApprovers) > 0 {
-		issueApproversText = fmt.Sprintf("%s", a.issueApprovers)
+		issueApproversText = strings.Join(a.issueApprovers, ", ")
 		assignees = a.issueApprovers
 	}
 
@@ -112,18 +113,18 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 	for _, comment := range comments {
 		commentUser := comment.User.GetLogin()
 
-		if approversIndex(disallowedUsers, commentUser) >= 0 {
+		if slices.Contains(disallowedUsers, commentUser) {
 			continue
 		}
-		if approversIndex(approvals, commentUser) >= 0 {
+		if slices.Contains(approvals, commentUser) {
 			continue
 		}
-		if len(approvers) > 0 && approversIndex(approvers, commentUser) < 0 {
+		if len(approvers) > 0 && !slices.Contains(approvers, commentUser) {
 			continue
 		}
 
 		commentBody := comment.GetBody()
-		isApprovalComment, err := isApproved(commentBody)
+		isApprovalComment, err := matchesWordList(commentBody, approvedWords)
 		if err != nil {
 			return approvalStatusPending, err
 		}
@@ -135,7 +136,7 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 			continue
 		}
 
-		isDenialComment, err := isDenied(commentBody)
+		isDenialComment, err := matchesWordList(commentBody, deniedWords)
 		if err != nil {
 			return approvalStatusPending, err
 		}
@@ -147,46 +148,16 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 	return approvalStatusPending, nil
 }
 
-func approversIndex(approvers []string, name string) int {
-	for idx, approver := range approvers {
-		if approver == name {
-			return idx
-		}
-	}
-	return -1
-}
-
-func isApproved(commentBody string) (bool, error) {
-	for _, approvedWord := range approvedWords {
-		re, err := regexp.Compile(fmt.Sprintf("(?i)^%s[.!]*\n*\\s*$", regexp.QuoteMeta(approvedWord)))
+func matchesWordList(commentBody string, words []string) (bool, error) {
+	for _, word := range words {
+		re, err := regexp.Compile(fmt.Sprintf("(?i)^%s[.!]*\n*\\s*$", regexp.QuoteMeta(word)))
 		if err != nil {
-			fmt.Printf("Error parsing. %v", err)
-			return false, err
+			return false, fmt.Errorf("error compiling pattern for %q: %w", word, err)
 		}
-
-		matched := re.MatchString(commentBody)
-
-		if matched {
+		if re.MatchString(commentBody) {
 			return true, nil
 		}
 	}
-
-	return false, nil
-}
-
-func isDenied(commentBody string) (bool, error) {
-	for _, deniedWord := range deniedWords {
-		re, err := regexp.Compile(fmt.Sprintf("(?i)^%s[.!]*\n*\\s*$", regexp.QuoteMeta(deniedWord)))
-		if err != nil {
-			fmt.Printf("Error parsing. %v", err)
-			return false, err
-		}
-		matched := re.MatchString(commentBody)
-		if matched {
-			return true, nil
-		}
-	}
-
 	return false, nil
 }
 

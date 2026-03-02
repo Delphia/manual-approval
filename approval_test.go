@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v74/github"
 )
 
 func TestApprovalFromComments(t *testing.T) {
@@ -337,7 +337,7 @@ func TestApprovedCommentBody(t *testing.T) {
 			}
 
 			// test
-			actual, err := isApproved(testCase.commentBody)
+			actual, err := matchesWordList(testCase.commentBody, approvedWords)
 			if err != nil {
 				t.Fatalf("error getting approval: %v", err)
 			}
@@ -473,9 +473,9 @@ func TestDeniedCommentBody(t *testing.T) {
 			}
 
 			// test
-			actual, err := isDenied(testCase.commentBody)
+			actual, err := matchesWordList(testCase.commentBody, deniedWords)
 			if err != nil {
-				t.Fatalf("error getting approval: %v", err)
+				t.Fatalf("error getting denial: %v", err)
 			}
 			if actual != testCase.isSuccess {
 				t.Fatalf("expected %v but got %v", testCase.isSuccess, actual)

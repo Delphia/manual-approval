@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/go-github/v61/github"
+	"github.com/google/go-github/v74/github"
 	"golang.org/x/oauth2"
 )
 
@@ -39,6 +39,7 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				fmt.Printf("error getting comments: %v\n", err)
 				channel <- 1
 				close(channel)
+				return
 			}
 
 			approved, err := approvalFromComments(comments, apprv.issueApprovers, apprv.minimumApprovals, apprv.disallowedUsers)
@@ -46,6 +47,7 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				fmt.Printf("error getting approval from comments: %v\n", err)
 				channel <- 1
 				close(channel)
+				return
 			}
 			fmt.Printf("Workflow status: %s\n", approved)
 			switch approved {
@@ -59,16 +61,19 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 					fmt.Printf("error commenting on issue: %v\n", err)
 					channel <- 1
 					close(channel)
+					return
 				}
 				_, _, err = client.Issues.Edit(ctx, apprv.repoOwner, apprv.repo, apprv.approvalIssueNumber, &github.IssueRequest{State: &newState})
 				if err != nil {
 					fmt.Printf("error closing issue: %v\n", err)
 					channel <- 1
 					close(channel)
+					return
 				}
 				channel <- 0
 				fmt.Println("Workflow manual approval completed")
 				close(channel)
+				return
 			case approvalStatusDenied:
 				newState := "closed"
 				closeComment := "Request denied. Closing issue and failing workflow."
@@ -79,15 +84,18 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 					fmt.Printf("error commenting on issue: %v\n", err)
 					channel <- 1
 					close(channel)
+					return
 				}
 				_, _, err = client.Issues.Edit(ctx, apprv.repoOwner, apprv.repo, apprv.approvalIssueNumber, &github.IssueRequest{State: &newState})
 				if err != nil {
 					fmt.Printf("error closing issue: %v\n", err)
 					channel <- 1
 					close(channel)
+					return
 				}
 				channel <- 1
 				close(channel)
+				return
 			}
 
 			time.Sleep(pollingInterval)
@@ -160,7 +168,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	approvers, disallowedUsers, err := retrieveApprovers(client, repoOwner)
+	approvers, disallowedUsers, minimumApprovals, err := retrieveApprovers(client, repoOwner)
 	if err != nil {
 		fmt.Printf("error retrieving approvers: %v\n", err)
 		os.Exit(1)
@@ -168,15 +176,6 @@ func main() {
 
 	issueTitle := os.Getenv(envVarIssueTitle)
 	issueBody := os.Getenv(envVarIssueBody)
-	minimumApprovalsRaw := os.Getenv(envVarMinimumApprovals)
-	minimumApprovals := 0
-	if minimumApprovalsRaw != "" {
-		minimumApprovals, err = strconv.Atoi(minimumApprovalsRaw)
-		if err != nil {
-			fmt.Printf("error parsing minimum approvals: %v\n", err)
-			os.Exit(1)
-		}
-	}
 	workflowInitiator := os.Getenv(envVarWorkflowInitiator)
 	apprv, err := newApprovalEnvironment(client, repoFullName, repoOwner, runID, approvers, minimumApprovals, issueTitle, issueBody, disallowedUsers, workflowInitiator)
 	if err != nil {
