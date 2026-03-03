@@ -42,7 +42,7 @@ func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner strin
 		issueApprovers:    approvers,
 		disallowedUsers:   disallowedUsers,
 		minimumApprovals:  minimumApprovals,
-		issueTitle:        fmt.Sprintf("Manual approval required for: %s (run %d)", issueTitle, runID),
+		issueTitle:        fmt.Sprintf("Manual approval required: %s (run %d)", issueTitle, runID),
 		issueBody:         issueBody,
 		workflowInitiator: workflowInitiator,
 	}, nil
