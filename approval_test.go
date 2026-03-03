@@ -159,6 +159,34 @@ func TestApprovalFromComments(t *testing.T) {
 			expectedStatus:   approvalStatusPending,
 			minimumApprovals: 2,
 		},
+		{
+			name: "no_approvers_anyone_can_approve",
+			comments: []*github.IssueComment{
+				{
+					User: &github.User{Login: &login1},
+					Body: &bodyApproved,
+				},
+			},
+			approvers:      []string{},
+			expectedStatus: approvalStatusApproved,
+		},
+		{
+			name: "no_approvers_anyone_can_deny",
+			comments: []*github.IssueComment{
+				{
+					User: &github.User{Login: &login1},
+					Body: &bodyDenied,
+				},
+			},
+			approvers:      []string{},
+			expectedStatus: approvalStatusDenied,
+		},
+		{
+			name: "no_approvers_pending_when_no_comments",
+			comments: []*github.IssueComment{},
+			approvers:      []string{},
+			expectedStatus: approvalStatusPending,
+		},
 	}
 
 	for _, testCase := range testCases {

@@ -105,9 +105,10 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 
 	if minimumApprovals == 0 {
 		if len(approvers) == 0 {
-			return "", fmt.Errorf("error: no required approvers or minimum approvals set")
+			minimumApprovals = 1
+		} else {
+			minimumApprovals = len(approvers)
 		}
-		minimumApprovals = len(approvers)
 	}
 
 	for _, comment := range comments {
