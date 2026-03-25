@@ -1,0 +1,14 @@
+# Managed by Terraform — do not edit directly.
+# https://github.com/Delphia/tilt-terraform/blob/main/tilt-io-devops/github.tf
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0
+    groups:
+      all-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
