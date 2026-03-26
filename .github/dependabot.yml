@@ -1,5 +1,5 @@
 # Managed by Terraform — do not edit directly.
-# https://github.com/Delphia/tilt-terraform/blob/main/tilt-io-devops/github.tf
+# https://github.com/Delphia/tilt-terraform/blob/main/tilt-io-devops/github-dependabot.tf
 version: 2
 updates:
   - package-ecosystem: "gomod"
