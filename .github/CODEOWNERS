@@ -1,4 +1,0 @@
-# Managed by Terraform — do not edit directly.
-# https://github.com/Delphia/tilt-terraform/blob/main/tilt-io-github/github-codeowners.tf
-
-* @Delphia/devops-reviewers
